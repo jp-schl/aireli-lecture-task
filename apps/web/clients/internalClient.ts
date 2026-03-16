@@ -3,20 +3,45 @@ import axios from 'axios';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
-const registerUser = async (input: PlatformUserCreateInput): Promise<Pick<PlatformUser, "id"> | undefined | null> => {
-  // ToDo: Implement the registerUser function
-  return null
+const registerUser = async (input: PlatformUserCreateInput): Promise<Pick<PlatformUser, "id"> | null> => {
+  try {
+    const { data } = await axios.post('http://localhost:3001/auth/register', {
+      email: input.email,
+      password: input.password
+    });
+
+    // data should return the created user: { id, email }
+    return data.user;
+  } catch (error) {
+    console.error("Error registering user:", error);
+    return null;
+  }
 };
 
 const loginUser = async (input: PlatformUserCreateInput) => {
-  // ToDo: Implement the loginUser function (someone else is working on it)
-  const user = {id: null} // replace this line
+  try {
+    // 1️⃣ Send credentials to backend
+    const { data } = await axios.post("http://localhost:3001/auth/login", {
+      email: input.email,
+      password: input.password,
+    });
 
+    // data should be: { user: { id, email }, accessToken, expiresAt }
+    const user = data.user;
 
-  // The following lines can be left unchanged because the output is expected to be a JWT token and an expiresAt value
-  const accessToken = jwt.sign({ id: user?.id }, process.env.JWT_SECRET || "no_key_set" as string, { expiresIn: '1h' });
-  const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString(); // 3600 seconds = 1 hour
-  return { accessToken, expiresAt };
+    // 2️⃣ Generate JWT token for frontend if needed
+    const accessToken = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET || "no_key_set",
+      { expiresIn: "1h" }
+    );
+    const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
+
+    return { accessToken, expiresAt };
+  } catch (error) {
+    console.error("Login failed:", error);
+    return null;
+  }
 };
 
 const getUser = async (accessToken: string): Promise<PlatformUser | undefined | null> => {
